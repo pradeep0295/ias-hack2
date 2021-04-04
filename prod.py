@@ -3,7 +3,7 @@ import json
 from json import dumps
 from json import loads
 import random
-
+import time
 
 sensorid = input()
 numSensors = int(input())
@@ -16,3 +16,4 @@ while True:
     for i in range(numSensors):
         d[i] = random.randint(0,100)
     producer.send(topic,d)
+    time.sleep(1)

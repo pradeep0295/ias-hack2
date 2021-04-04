@@ -27,6 +27,6 @@ s = {
     "Location" : "<A1:A2:A3....>",
     "sensorType" : "speaker"
 }
-response = requests.post("http://127.0.0.1:5000/registerInstance/", json=json.dumps(speaker)).json()
-response = requests.post("http://127.0.0.1:5000/registerType/",json=json.dumps(s)).json()
+response = requests.post("http://127.0.0.1:5000/registerInstance/", json=json.dumps(s)).json()
+response = requests.post("http://127.0.0.1:5000/registerType/",json=json.dumps(speaker)).json()
 
