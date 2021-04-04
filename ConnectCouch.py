@@ -25,7 +25,7 @@ class ConnectCouch(object):
             keys.append(list(doc.keys())[2])
         return keys
 
-    def sensorTypeRegistration(self, sensorTypeName):
+    def SensorTypeRegistration(self, sensorTypeName):
         """
         Assuming that the SensorInstance and SensorTypeName are json Files
         """

@@ -27,13 +27,13 @@ def registerInstance():
     topic = "Topic"+str(Sinst['sensorid'])
     x= Thread(target=listen,args=(str(Sinst['sensorid']),topic,))
     x.start()    
-    return "OK"
+    return json.dumps({"OK":"registered"})
     
 @app.route('/registerType/', methods = ['POST'])
 def registerType():
     Stype  = json.loads(request.get_json())
     connectCouch.SensorTypeRegistration(Stype)
-    return "OK"
+    return json.dumps({"OK":"registered"})
     
 @app.route('/showTypes/',methods = ['POST'])
 def showTypes():
@@ -44,10 +44,12 @@ def showInstances():
     return connectCouch.GetAllSensorIDs()
 
 def control(topic):
+    producer = KafkaProducer(bootstrap_servers=['localhost:9092'],value_serializer=lambda x: dumps(x).encode('utf-8'))
     consumer = KafkaConsumer(topic,bootstrap_servers=['localhost:9092'],auto_offset_reset='latest',value_deserializer=lambda x: loads(x.decode('utf-8')))
     for message in consumer:
-        d = message.value
-        print("control requested by "+str(d['appid'])+"on sensor"+str(d['sensorid'])+"on control pin"+str(d['controlid'])+str(d['param']))
+        reqd = message.value
+        topic = "Topic"+str(reqd['sensorid'])+'-'
+        producer.send(topic,reqd)
 
 ## Data Request handling from different Appids     
 def app_serve():
@@ -58,7 +60,7 @@ def app_serve():
         f = open(sensorDataPath+str(reqd['sensorid']),'r') 
         data = json.load(f)
         f.close()
-        res = {'appid':reqd['appid'],'val':data[str(reqd['inputid'])]}
+        res = {'appid':reqd['appid'],'val':data[str(reqd['inputType'])]}
         time.sleep(0.2)
         producer.send('response',res)
         
