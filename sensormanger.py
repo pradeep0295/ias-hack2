@@ -8,18 +8,17 @@ import json
 import time
 from json import loads
 from json import dumps
-### every sensor instance has a single intermediate server -> localhost:5000
-## Sensorid=<string>, SensorType=<string>
 app = Flask(__name__)
-Tid = 0
 
-# def consume(topic): In thread, sleep,  consumer('latest')
-SensorRegistry = {} # dict(dict())  access using [sensorid][inputid]  update recent values of every input in a sensor instance
+SensorRegistry = {}
 
+def print_SensorRegistry():
+    while True:
+        print(SensorRegistry)
+        time.sleep(0.5)
+        
 def listen(sensorId,topic):
     global SensorRegistry
-    print("entered listen")
-    os.system("~/kafka_2.13-2.7.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic "+topic)
     consumer = KafkaConsumer(topic,bootstrap_servers=['localhost:9092'],auto_offset_reset='latest',value_deserializer=lambda x: loads(x.decode('utf-8')))
     for message in consumer:
         d = message.value
@@ -34,7 +33,7 @@ def registerInstance():
     Sinst  = json.loads(request.get_json())
     print(Sinst)
     connectCouch.SensorInstanceRegistration(Sinst)
-    topic = "topic"+str(Sinst['sensorid'])
+    topic = "Topic"+str(Sinst['sensorid'])
     x= Thread(target=listen,args=(str(Sinst['sensorid']),topic,))
     x.start()    
     return "OK"
@@ -53,15 +52,16 @@ def showTypes():
 def showInstances():
     return connectCouch.GetAllSensorIDs()
 
-def control(consumer):
+def control(topic):
+    consumer = KafkaConsumer(topic,bootstrap_servers=['localhost:9092'],auto_offset_reset='latest',value_deserializer=lambda x: loads(x.decode('utf-8')))
     for message in consumer:
         d = message.value
         print("control requested by "+str(d['appid'])+"on sensor"+str(d['sensorid'])+"on control pin"+str(d['controlid'])+str(d['param']))
 
 ## Data Request handling from different Appids     
-def serve(consumer,producer):
+def app_serve(topic):
+    consumer = KafkaConsumer(topic,bootstrap_servers=['localhost:9092'],auto_offset_reset='latest',value_deserializer=lambda x: loads(x.decode('utf-8')))
     global SensorRegistry
-    print(message,"........")
     for message in consumer:
         reqd = message.value
         print(reqd['sensorid'],reqd['inputid'])
@@ -73,16 +73,12 @@ def serve(consumer,producer):
 
 ## initializer Function of the sensormanager -> can be called in init.py and init.py can be used by serverLifeCycle to start sensorManager in a Node.    
 def initializeSensorManager():
-    os.system("~/kafka_2.13-2.7.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic Request")
-    os.system("~/kafka_2.13-2.7.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic Control")
-    os.system("~/kafka_2.13-2.7.0/bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic Response")
-    consumer_control = KafkaConsumer('Control',bootstrap_servers=['localhost:9092'],auto_offset_reset='earliest',value_deserializer=lambda x: loads(x.decode('utf-8')))
-    consumer = KafkaConsumer('Request',bootstrap_servers=['localhost:9092'],auto_offset_reset='earliest',value_deserializer=lambda x: loads(x.decode('utf-8')))
-    producer = KafkaProducer(bootstrap_servers=['localhost:9092'],value_serializer=lambda x: dumps(x).encode('utf-8'))
-    th = Thread(target=serve,args=(consumer, producer,))
-    thc = Thread(target=control,args=(consumer_control,))
+    th = Thread(target=app_serve,args=('request',))
     th.start()
-    thc.start()
+    th = Thread(target=control,args=('control',))
+    th.start()
+    th = Thread(target=print_SensorRegistry)
+    th.start()
     app.run(debug=True)
 initializeSensorManager()
 
