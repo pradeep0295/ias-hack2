@@ -54,7 +54,8 @@ class ConnectMongo(object):
 
     def getSensorURL(self, sensorID):
         sensorInstance = list(self.SensorInstance.find({"sensorid" : sensorID}))
-        print(sensorInstance)
+        if(len(sensorInstance) == 0):
+            return "invalid sensor id"
         return sensorInstance[0]["sensorurl"]
         
 
